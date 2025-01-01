@@ -13,26 +13,33 @@ st.write('The name on your Smoothie will be: ', name_on_order)
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-# Fetch fruit options
+# Fetch fruit options from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'), col('search_on'))
 pd_df = my_dataframe.to_pandas()
-st.dataframe(pd_df)
 
-# Multiselect for ingredients
-ingredients_list = st.multiselect(
-    'Choose up to 5 Ingredients:',
-    options=pd_df['fruit_name'].tolist(),
-    max_selections=5
-)
+# Debug column names
+st.write("Columns in DataFrame:", pd_df.columns)
+
+# Corrected column name usage
+if 'fruit_name' in pd_df.columns:  # Check if 'fruit_name' exists
+    ingredients_list = st.multiselect(
+        'Choose up to 5 Ingredients:',
+        options=pd_df['fruit_name'].tolist(),
+        max_selections=5
+    )
+else:
+    st.error("Column 'fruit_name' not found in the data. Check your Snowflake table schema.")
 
 if ingredients_list:
-    # Nutrition information and order string
+    # Build ingredients string
     ingredients_string = ''.join(sorted(ingredients_list))
 
     for fruit_chosen in ingredients_list:
+        # Ensure column names match
         search_on = pd_df.loc[pd_df['fruit_name'] == fruit_chosen, 'search_on'].iloc[0]
         st.subheader(f"{fruit_chosen} Nutrition Information")
 
+        # Fetch nutrition information
         try:
             response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
             response.raise_for_status()
@@ -41,7 +48,7 @@ if ingredients_list:
         except requests.exceptions.RequestException as e:
             st.error(f"Error fetching data for {fruit_chosen}: {e}")
 
-    # Prepare insert statement
+    # Prepare SQL insertion
     time_to_insert = st.button('Submit Order')
     if time_to_insert:
         try:
