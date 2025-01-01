@@ -1,56 +1,59 @@
+# Import python packages
 import streamlit as st
-from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
-import re  # Regular expression module
-
-# App title and description
+import requests
+# Write directly to the app
 st.title(":cup_with_straw: Customize Your Smoothie :cup_with_straw:")
-st.write("Choose the fruits you want in your custom Smoothie!")
+st.write(
+    """  Choose the fruits you want in your custom Smoothie !
+    """
+)
+name_on_order= st.text_input('Name on Smoothie:')
+st.write('The name on your Smoothie will be: ',name_on_order)
 
-name_on_order = st.text_input('Name on Smoothie:')
-cleaned_name = re.sub(r'["\']', '', name_on_order.strip())  # Remove quotes and spaces
-
-st.write(f'The cleaned name on your Smoothie will be: {cleaned_name}')
-
-# Proceed with the smoothie creation process
-cnx = st.connection("snowflake")
-session = cnx.session()
-
-# Get fruit options from Snowflake
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'), col('search_on'))
+cnx =st.connection("snowflake")
+session= cnx.session()
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('fruit_name'),col('search_on'))
 st.dataframe(data=my_dataframe, use_container_width=True)
 
-# Convert dataframe to pandas for further processing
-pd_df = my_dataframe.to_pandas()
+pd_df=my_dataframe.to_pandas()
 st.dataframe(pd_df)
 
-# Ingredients selection
-ingredients_list = st.multiselect('Choose up to 5 Ingredients:', my_dataframe, max_selections=5)
+
+
+ingredients_list = st.multiselect(
+    'Choose upto 5 Ingredeints : '
+    ,my_dataframe
+    ,max_selections=5
+)
 
 if ingredients_list:
-    ingredients_string = ''
+    
+    ingredients_string=''
     for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ' '
+        ingredients_string += fruit_chosen 
 
-        # Fetch nutrition information (handle exceptions)
-        search_on = pd_df.loc[pd_df['fruit_name'] == fruit_chosen, 'search_on'].iloc[0]
-        st.subheader(f'{fruit_chosen} Nutrition Information')
+        search_on=pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        #st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
         
-        # This part can be replaced with your API call to fetch nutrition info
-        # Assuming a valid API or response is being returned
-        st.write(f"Nutrition data for {fruit_chosen} would be here.")  # For testing
+        st.subheader(fruit_chosen + 'Nutrition Information')
+        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/"+search_on)
+        sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
 
-    # Build the insert statement for Snowflake
-    my_insert_stmt = f"""
-        INSERT INTO smoothies.public.orders (ingredients, name_on_order)
-        VALUES ('{ingredients_string}', '{cleaned_name}')
-    """
+    #st.write(ingredients_string)
 
-    time_to_insert = st.button('Submit Order')
+    my_insert_stmt = """ insert into smoothies.public.orders(ingredients,name_on_order)
+            values ('""" + ingredients_string + """','"""+ name_on_order+""""')"""
+
+    #st.write(my_insert_stmt)
+  
+    time_to_insert = st.button('Submit_order')
     
     if time_to_insert:
-        try:
-            session.sql(my_insert_stmt).collect()
-            st.success(f"✅ Your Smoothie is ordered, {cleaned_name}!")
-        except Exception as e:
-            st.error(f"Something went wrong: {e}")
+        session.sql(my_insert_stmt).collect()
+        st.success(f"✅ Your Smoothie is ordered, {name_on_order}!")
+
+
+
+
+
