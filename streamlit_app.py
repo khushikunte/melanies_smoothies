@@ -45,7 +45,7 @@ if ingredients_list:
     #st.write(ingredients_string)
 
     my_insert_stmt = """ insert into smoothies.public.orders(ingredients,name_on_order)
-            values ('""" + ingredients_string + """','"""+ name_on_order+""""')"""
+            values ('""" + ingredients_string + """','"""+ cleaned_name+""""')"""
 
     #st.write(my_insert_stmt)
   
@@ -53,7 +53,7 @@ if ingredients_list:
     
     if time_to_insert:
         session.sql(my_insert_stmt).collect()
-        st.success(f"✅ Your Smoothie is ordered, {name_on_order}!")
+        st.success(f"✅ Your Smoothie is ordered, {cleaned_name}!")
 
 
 
